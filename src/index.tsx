@@ -4,6 +4,7 @@ import React, {
   useEffect,
   forwardRef,
   useImperativeHandle,
+  useId,
 } from 'react';
 import ReactDOM from 'react-dom';
 import { PopupProps, PopupActions } from './types';
@@ -19,8 +20,9 @@ import './index.css';
 
 import styles from './styles';
 import calculatePosition from './Utils';
+import { useCallback } from '@storybook/addons';
 
-let popupIdCounter = 0;
+//let popupIdCounter = 0;
 
 const getRootPopup = () => {
   let PopupRoot = document.getElementById('popup-root');
@@ -70,7 +72,8 @@ export const Popup = forwardRef<PopupActions, PopupProps>(
     const contentRef = useRef<HTMLElement>(null);
     const arrowRef = useRef<HTMLDivElement>(null);
     const focusedElBeforeOpen = useRef<Element | null>(null);
-    const popupId = useRef<string>(`popup-${++popupIdCounter}`);
+    const popupId = useId();
+    //const popupId = useRef<string>(`popup-${++popupIdCounter}`);
 
     const isModal = modal ? true : !trigger;
     const timeOut = useRef<any>(0);
@@ -89,28 +92,34 @@ export const Popup = forwardRef<PopupActions, PopupProps>(
       };
     }, [isOpen]);
 
+    const openPopup = useCallback(
+      (event?: React.SyntheticEvent) => {
+        if (isOpen || disabled) return;
+        setIsOpen(true);
+        setTimeout(() => onOpen(event), 0);
+      },
+      [isOpen, disabled, onOpen]
+    );
+
+    const closePopup = useCallback(
+      (
+        event?: React.SyntheticEvent | KeyboardEvent | TouchEvent | MouseEvent
+      ) => {
+        if (!isOpen || disabled) return;
+        setIsOpen(false);
+        if (isModal) (focusedElBeforeOpen.current as HTMLElement)?.focus();
+        setTimeout(() => onClose(event), 0);
+      },
+      [isOpen, disabled, isModal, onClose]
+    );
+
     // for uncontrolled popup we need to sync isOpen with open prop
     useEffect(() => {
       if (typeof open === 'boolean') {
         if (open) openPopup();
         else closePopup();
       }
-    }, [open, disabled]);
-
-    const openPopup = (event?: React.SyntheticEvent) => {
-      if (isOpen || disabled) return;
-      setIsOpen(true);
-      setTimeout(() => onOpen(event), 0);
-    };
-
-    const closePopup = (
-      event?: React.SyntheticEvent | KeyboardEvent | TouchEvent | MouseEvent
-    ) => {
-      if (!isOpen || disabled) return;
-      setIsOpen(false);
-      if (isModal) (focusedElBeforeOpen.current as HTMLElement)?.focus();
-      setTimeout(() => onClose(event), 0);
-    };
+    }, [open, disabled, openPopup, closePopup]);
 
     const togglePopup = (event?: React.SyntheticEvent) => {
       event?.stopPropagation();
@@ -210,7 +219,7 @@ export const Popup = forwardRef<PopupActions, PopupProps>(
       const triggerProps: any = {
         key: 'T',
         ref: triggerRef,
-        'aria-describedby': popupId.current,
+        'aria-describedby': popupId,
       };
       const onAsArray = Array.isArray(on) ? on : [on];
       for (let i = 0, len = onAsArray.length; i < len; i++) {
@@ -272,42 +281,41 @@ export const Popup = forwardRef<PopupActions, PopupProps>(
       return childrenElementProps;
     };
 
-    const renderContent = () => {
-      return (
-        <div
-          {...addWarperAction()}
-          key="C"
-          role={isModal ? 'dialog' : 'tooltip'}
-          id={popupId.current}
-        >
-          {arrow && !isModal && (
-            <div ref={arrowRef} style={styles.popupArrow}>
-              <svg
-                data-testid="arrow"
-                className={`popup-arrow ${
-                  className !== ''
-                    ? className
-                        .split(' ')
-                        .map(c => `${c}-arrow`)
-                        .join(' ')
-                    : ''
-                }`}
-                viewBox="0 0 32 16"
-                style={{
-                  position: 'absolute',
-                  ...arrowStyle,
-                }}
-              >
-                <path d="M16 0l16 16H0z" fill="currentcolor" />
-              </svg>
-            </div>
-          )}
-          {children && typeof children === 'function'
-            ? children(closePopup, isOpen)
-            : children}
-        </div>
-      );
-    };
+    const renderContent = () => (
+      <div
+        {...addWarperAction()}
+        key="C"
+        role={isModal ? 'dialog' : 'tooltip'}
+        id={popupId}
+      >
+        {arrow && !isModal && (
+          <div ref={arrowRef} style={styles.popupArrow}>
+            <svg
+              data-testid="arrow"
+              className={`popup-arrow ${
+                className !== ''
+                  ? className
+                      .split(' ')
+                      .map(c => `${c}-arrow`)
+                      .join(' ')
+                  : ''
+              }`}
+              viewBox="0 0 32 16"
+              style={{
+                position: 'absolute',
+                ...arrowStyle,
+              }}
+            >
+              <path d="M16 0l16 16H0z" fill="currentcolor" />
+            </svg>
+          </div>
+        )}
+        {children}
+        {/* && typeof children === 'function'
+         ? children(closePopup, isOpen)
+         : children} */}
+      </div>
+    );
 
     const overlay = !(on.indexOf('hover') >= 0);
     const ovStyle = isModal ? styles.overlay.modal : styles.overlay.tooltip;
