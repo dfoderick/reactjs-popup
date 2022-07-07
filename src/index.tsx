@@ -5,6 +5,7 @@ import React, {
   forwardRef,
   useImperativeHandle,
   useId,
+  useCallback,
 } from 'react';
 import ReactDOM from 'react-dom';
 import { PopupProps, PopupActions } from './types';
@@ -20,7 +21,7 @@ import './index.css';
 
 import styles from './styles';
 import calculatePosition from './Utils';
-import { useCallback } from '@storybook/addons';
+//import { useCallback } from '@storybook/addons';
 
 //let popupIdCounter = 0;
 
